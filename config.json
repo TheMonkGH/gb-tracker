@@ -4,6 +4,9 @@
   "max_mods_per_category": 0,
   "delay_seconds": 0.5,
   "storage": "csv",
+  "db_file": "gb_stats.db",
   "data_dir": "data",
-  "dashboard_file": "site/index.html"
+  "dashboard_file": "site/index.html",
+  "endpoint_member": "/Mod/Index?_nPage={page}&_nPerpage=50&_aFilters%5BGeneric_Submitter%5D={id}",
+  "endpoint_category": "/Mod/Index?_nPage={page}&_nPerpage=50&_aFilters%5BGeneric_Category%5D={id}&_sSort=Generic_MostDownloaded"
 }
