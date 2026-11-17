@@ -1,0 +1,61 @@
+name: Relevé GameBanana
+
+on:
+  schedule:
+    - cron: "17 11 * * *"   # tous les jours à 11h17 UTC (12h17 en hiver, 13h17 en été à Paris)
+  workflow_dispatch:         # bouton « Run workflow » pour lancer un relevé à la main
+
+permissions:
+  contents: write   # enregistrer les nouveaux CSV dans le dépôt
+  pages: write      # publier le tableau de bord
+  id-token: write   # requis par GitHub Pages
+
+concurrency:
+  group: releve-gamebanana
+  cancel-in-progress: false   # jamais deux relevés en même temps
+
+jobs:
+  releve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Relevé du jour
+        id: releve
+        continue-on-error: true   # même en cas d'échec, on enregistre et publie ce qui a été relevé
+        run: python gb_tracker.py
+
+      - name: Enregistrer les données dans le dépôt
+        run: |
+          git config user.name "gb-tracker"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data config.json
+          if git diff --cached --quiet; then
+            echo "Aucune donnée nouvelle."
+          else
+            git commit -m "Relevé du $(date -u +%F)"
+            git pull --rebase
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Publier le tableau de bord
+        id: deploiement
+        uses: actions/deploy-pages@v5
+
+      - name: Signaler un relevé raté
+        if: steps.releve.outcome == 'failure'
+        run: |
+          echo "::error::Le relevé a échoué (bloqué, hors ligne ou erreur) : voir les logs de l'étape « Relevé du jour »."
+          exit 1
