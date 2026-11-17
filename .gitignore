@@ -1,0 +1,9 @@
+# fichiers de travail, jamais envoyés sur GitHub
+site/
+gb_stats.db
+demo.db
+demo_dashboard.html
+gb_tracker.log*
+gb_tracker.lock
+*.tmp
+__pycache__/

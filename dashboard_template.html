@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes mods GameBanana</title>
+<style>
+.viz-root {
+  color-scheme: light;
+  --page: #f4f4f2; --surface-1: #fcfcfb; --border: #e3e2de;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #7c7b76;
+  --grid: #ebeae6; --series-1: #2a78d6; --series-1-soft: #cde2fb; --ref: #8d8c87;
+  --good: #0a7d32; --bad: #c4332f; --hl: #eef5fd;
+}
+@media (prefers-color-scheme: dark) {
+  .viz-root {
+    color-scheme: dark;
+    --page: #121211; --surface-1: #1a1a19; --border: #2e2e2c;
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
+    --grid: #2a2a28; --series-1: #3987e5; --series-1-soft: #1c3557; --ref: #8f8e86;
+    --good: #3fbf6a; --bad: #e66767; --hl: #1b2636;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 28px; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 2px; font-weight: 650; }
+h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+.sub { color: var(--text-secondary); margin-bottom: 20px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+.tabs, .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs { margin-bottom: 16px; }
+button.pill { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+  border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
+button.pill[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+.seg button.pill { padding: 4px 11px; font-size: 13px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile .label { color: var(--text-secondary); font-size: 13px; }
+.tile .val { font-size: 28px; font-weight: 650; letter-spacing: -0.5px; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.tile .meta { color: var(--text-muted); font-size: 12.5px; }
+.up { color: var(--good); } .down { color: var(--bad); }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.legend { display: flex; gap: 16px; color: var(--text-secondary); font-size: 12.5px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--series-1); vertical-align: middle; margin-right: 6px; }
+.legend i.ref { border-top: 2px dashed var(--ref); }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12); display: none; white-space: nowrap; }
+.tip b { font-variant-numeric: tabular-nums; }
+.rank-row { display: grid; grid-template-columns: 210px 1fr 120px; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid var(--grid); }
+.rank-row:first-of-type { border-top: 0; }
+.rank-row .name { color: var(--text-secondary); }
+.rank-row .name small { display: block; color: var(--text-muted); font-size: 12px; }
+.bar { position: relative; height: 10px; background: var(--grid); border-radius: 5px; }
+.bar span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--series-1); border-radius: 5px; }
+.bar em { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--ref); left: 50%; }
+.rank-row .r { text-align: right; font-variant-numeric: tabular-nums; }
+.rank-row .r small { display: block; color: var(--text-muted); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 8px; border-top: 1px solid var(--grid); white-space: nowrap; }
+th { color: var(--text-secondary); font-weight: 550; font-size: 12.5px; cursor: pointer; user-select: none; border-top: 0; }
+th:first-child, td:first-child { text-align: left; } th:nth-child(2), td:nth-child(2) { text-align: left; white-space: normal; }
+tr.mine td { background: var(--hl); font-weight: 600; }
+td a { color: inherit; text-decoration: none; } td a:hover { text-decoration: underline; }
+.note { color: var(--text-muted); font-size: 12.5px; margin-top: 10px; }
+.runwarn { border-color: var(--bad); padding: 12px 16px; }
+.runwarn b { color: var(--bad); }
+.empty { color: var(--text-secondary); padding: 30px 0; text-align: center; }
+.tablewrap { max-height: 520px; overflow: auto; }
+@media (max-width: 640px) { .rank-row { grid-template-columns: 1fr 90px; } .rank-row .bar { grid-column: 1 / -1; grid-row: 2; } .viz-root { padding: 14px; } }
+</style>
+</head>
+<body>
+<div class="viz-root"><div class="wrap">
+  <h1>Mes mods GameBanana</h1>
+  <div class="sub" id="sub"></div>
+  <div class="card runwarn" id="runwarn" style="display:none"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div id="main"></div>
+</div></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const METRICS = { downloads: "Téléchargements", likes: "Likes", views: "Vues" };
+const fmt = n => n == null || !isFinite(n) ? "—" : (Math.abs(n) >= 100 ? Math.round(n).toLocaleString("fr-FR") : (+n.toFixed(1)).toLocaleString("fr-FR"));
+const sgn = n => (n > 0 ? "+" : "") + fmt(n);
+const DAY = 86400000;
+const toDate = s => new Date(s + "T00:00:00");
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const safeUrl = u => /^https:\/\/(\w+\.)?gamebanana\.com\//.test(u || "") ? u : "#";
+const dayLabel = s => toDate(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------- index des données ----------
+const mods = new Map(DATA.mods.map(m => [m.mod_id, m]));
+// relevés compacts : [jour, mod_id, téléchargements, likes, vues]
+const series = new Map(), byDay = new Map();
+for (const [day, mod_id, downloads, likes, views] of DATA.snapshots) {
+  const s = { day, mod_id, downloads, likes, views };
+  if (!series.has(mod_id)) { series.set(mod_id, []); byDay.set(mod_id, new Map()); }
+  series.get(mod_id).push(s); byDay.get(mod_id).set(day, s);
+}
+const days = [...new Set(DATA.snapshots.map(s => s[0]))].sort();
+const lastDay = days[days.length - 1];
+const mine = DATA.mods.filter(m => m.is_mine).sort((a, b) => a.date_added - b.date_added);
+
+function latest(id) { const a = series.get(id); return a ? a[a.length - 1] : null; }
+function valueAt(id, day, metric) { // valeur relevée ce jour-là (accès direct, pas de boucle)
+  const s = byDay.has(id) && byDay.get(id).get(day);
+  return s ? s[metric] : null;
+}
+function gain(id, metric, windowDays) { // gain sur la fenêtre (ou ce qui est dispo)
+  const a = series.get(id); if (!a || a.length < 2) return null;
+  const end = a[a.length - 1];
+  const t = toDate(end.day); t.setDate(t.getDate() - windowDays);
+  const target = isoLocal(t); // date locale (toISOString passait en UTC : décalage d'un jour)
+  let start = a[0]; for (const s of a) { if (s.day <= target) start = s; }
+  const span = (toDate(end.day) - toDate(start.day)) / DAY;
+  if (span < 1) return null;
+  return { value: end[metric] - start[metric], span, perDay: (end[metric] - start[metric]) / span };
+}
+function ageDays(m) { return m.date_added ? Math.max(1, (toDate(lastDay) - m.date_added * 1000) / DAY) : null; }
+function catPeers(m) {
+  let ids = DATA.category_members.filter(c => c[0] === m.cat_id).map(c => c[1]); // [cat_id, mod_id] du dernier relevé
+  if (!ids.length) ids = DATA.mods.filter(x => x.cat_id === m.cat_id).map(x => x.mod_id);
+  if (!ids.includes(m.mod_id)) ids.push(m.mod_id);
+  return ids.filter(id => latest(id) && latest(id).day === lastDay);
+}
+function row(id) {
+  const m = mods.get(id), s = latest(id), age = ageDays(m);
+  const g = gain(id, "downloads", 7);
+  return { id, m, s, dl: s.downloads, likes: s.likes, views: s.views,
+    lpk: s.views ? s.likes / s.views * 1000 : null,
+    dlpd: age ? s.downloads / age : null,
+    g7: g ? g.perDay : null };
+}
+function median(arr) { const a = arr.filter(v => v != null && isFinite(v)).sort((x, y) => x - y); if (!a.length) return null; const k = a.length >> 1; return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2; }
+
+// ---------- état ----------
+const state = { mod: mine[0] && mine[0].mod_id, metric: "downloads", mode: "gain", sort: "dl", sortDir: -1 };
+
+document.getElementById("sub").textContent = days.length
+  ? `${days.length} relevé${days.length > 1 ? "s" : ""} du ${dayLabel(days[0])} au ${dayLabel(lastDay)} · généré le ${new Date(DATA.generated).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`
+  : "Aucun relevé pour l'instant.";
+
+(function runStatus() {
+  const r = (DATA.runs || [])[0]; if (!r) return;
+  const el = document.getElementById("runwarn");
+  const when = new Date(r.started).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const line = `${r.mods_ok}/${r.mods_expected} mods relevés · ${r.throttled} freinage${r.throttled > 1 ? "s" : ""} · ${Math.round(r.duration_s)} s`;
+  if (r.status === "ok") { document.getElementById("sub").textContent += ` · dernier relevé (${when}) : ${line}`; return; }
+  const msg = { "freiné": "GameBanana a ralenti le script, qui a allongé sa pause tout seul (jusqu'à " + (+r.max_delay).toFixed(1) + " s). Le relevé est complet si les chiffres ci-dessous concordent.",
+    "incomplet": "Certains mods n'ont pas pu être lus (supprimés, privés ou erreur réseau).",
+    "bloqué": "GameBanana a bloqué les requêtes : le relevé s'est arrêté. Augmente delay_seconds dans config.json.",
+    "hors ligne": "Pas de connexion Internet pendant 10 min : relevé annulé. Rien n'est perdu, le prochain relevé récupérera les totaux.",
+    "erreur": "Le script a rencontré une erreur imprévue." }[r.status] || "";
+  el.innerHTML = `<b>Relevé du ${when} : ${esc(r.status)}</b> — ${line}.<br>${msg} Détails dans gb_tracker.log (version PC) ou dans l'onglet Actions du dépôt (version GitHub).`;
+  el.style.display = "block";
+})();
+
+function renderTabs() {
+  const t = document.getElementById("tabs");
+  t.innerHTML = mine.map(m => `<button class="pill" role="tab" aria-pressed="${m.mod_id === state.mod}" data-id="${m.mod_id}">${esc(m.name)}</button>`).join("");
+  t.querySelectorAll("button").forEach(b => b.onclick = () => { state.mod = +b.dataset.id; render(); });
+}
+
+function render() {
+  renderTabs();
+  const main = document.getElementById("main");
+  if (!state.mod) { main.innerHTML = `<div class="card empty">Aucun de tes mods n'a encore été relevé. Lance <code>python gb_tracker.py</code>.</div>`; return; }
+  const m = mods.get(state.mod), s = latest(m.mod_id), age = ageDays(m);
+  const tiles = ["downloads", "likes", "views"].map(k => {
+    const g = gain(m.mod_id, k, 7);
+    const gtxt = g ? `<span class="${g.value > 0 ? "up" : ""}">${sgn(g.value)}</span> sur ${Math.round(g.span)} j` : "évolution dès le 2ᵉ relevé";
+    return `<div class="card tile"><div class="label">${METRICS[k]}</div><div class="val">${fmt(s[k])}</div>
+      <div class="meta">${gtxt}${age ? ` · ${fmt(s[k] / age)}/jour depuis la sortie` : ""}</div></div>`;
+  }).join("");
+  const lpk = s.views ? s.likes / s.views * 1000 : null;
+  const tileRatio = `<div class="card tile"><div class="label">Likes pour 1 000 vues</div><div class="val">${fmt(lpk)}</div>
+    <div class="meta">${m.cat_name ? "Catégorie " + esc(m.cat_name) : ""}${age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
+
+  main.innerHTML = `
+    <div class="tiles">${tiles}${tileRatio}</div>
+    <div class="card">
+      <div class="toolbar">
+        <h2 style="margin:0">Évolution</h2>
+        <div class="seg" id="metricSeg">${Object.entries(METRICS).map(([k, v]) => `<button class="pill" data-k="${k}" aria-pressed="${state.metric === k}">${v}</button>`).join("")}</div>
+        <div class="seg" id="modeSeg"><button class="pill" data-k="gain" aria-pressed="${state.mode === "gain"}">Gain par jour</button><button class="pill" data-k="total" aria-pressed="${state.mode === "total"}">Total cumulé</button></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="chart" id="chart"><svg></svg><div class="tip"></div></div>
+    </div>
+    <div class="card"><h2>Position dans « ${esc(m.cat_name || "?")} »</h2><div id="ranks"></div></div>
+    <div class="card"><h2>Tous les mods de la catégorie</h2><div class="tablewrap" id="table"></div>
+      <div class="note">Cliquer un en-tête pour trier. « DL/jour (7 j) » = téléchargements gagnés par jour sur la dernière semaine relevée.</div></div>`;
+
+  document.querySelectorAll("#metricSeg button").forEach(b => b.onclick = () => { state.metric = b.dataset.k; render(); });
+  document.querySelectorAll("#modeSeg button").forEach(b => b.onclick = () => { state.mode = b.dataset.k; render(); });
+  drawChart(m); drawRanks(m); drawTable(m);
+}
+
+// ---------- graphique ----------
+function buildSeries(m) {
+  const a = series.get(m.mod_id) || [], k = state.metric;
+  if (state.mode === "total") return { mine: a.map(s => ({ day: s.day, v: s[k] })), ref: null };
+  const pts = [];
+  for (let i = 1; i < a.length; i++) {
+    const gap = (toDate(a[i].day) - toDate(a[i - 1].day)) / DAY;
+    pts.push({ day: a[i].day, v: (a[i][k] - a[i - 1][k]) / gap });
+  }
+  const peers = catPeers(m).filter(id => !mods.get(id).is_mine); // médiane = les AUTRES moddeurs
+  const ref = [];
+  if (peers.length >= 3) for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], prevDay = a[i].day; // pts[i] correspond à a[i+1]
+    const gap = (toDate(p.day) - toDate(prevDay)) / DAY;
+    const vals = peers.map(id => { const v1 = valueAt(id, p.day, k), v0 = valueAt(id, prevDay, k); return v1 != null && v0 != null ? (v1 - v0) / gap : null; });
+    // pas de médiane un jour où moins de la moitié des concurrents ont été relevés
+    // (relevé interrompu, ou historique ancien non exporté) : elle serait trompeuse
+    const known = vals.filter(v => v != null);
+    if (known.length >= Math.max(3, peers.length / 2)) ref.push({ day: p.day, v: median(known) });
+  }
+  return { mine: pts, ref: ref.length ? ref : null };
+}
+
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const f of [1, 2, 2.5, 5, 10]) if (f * p >= v) return f * p; return 10 * p; }
+
+function drawChart(m) {
+  const { mine: pts, ref } = buildSeries(m);
+  const box = document.getElementById("chart"), svg = box.querySelector("svg"), tip = box.querySelector(".tip");
+  document.getElementById("legend").innerHTML = ref ? `<span><i></i>${esc(m.name)}</span><span><i class="ref"></i>Médiane de la catégorie</span>` : "";
+  if (pts.length < 2) { svg.outerHTML = `<div class="empty">${state.mode === "gain" ? "Le gain par jour s'affichera après 3 relevés." : "La courbe s'affichera après 2 relevés."} Reviens demain.</div>`; return; }
+  const W = 1060, H = 300, L = 56, R = 16, T = 12, B = 30;
+  const t0 = toDate(pts[0].day), t1 = toDate(pts[pts.length - 1].day);
+  const x = d => L + (W - L - R) * ((toDate(d) - t0) / Math.max(DAY, t1 - t0));
+  const vmax = niceMax(Math.max(...pts.map(p => p.v), ...(ref || []).map(p => p.v)));
+  const vmin = Math.min(0, ...pts.map(p => p.v));
+  const y = v => T + (H - T - B) * (1 - (v - vmin) / (vmax - vmin));
+  const ticks = [0, .25, .5, .75, 1].map(f => vmin + f * (vmax - vmin));
+  const path = arr => arr.map((p, i) => {
+    const gap = i && (toDate(p.day) - toDate(arr[i - 1].day)) / DAY > 3; // trou de plus de 3 jours : on lève le crayon
+    return `${i && !gap ? "L" : "M"}${x(p.day).toFixed(1)},${y(p.v).toFixed(1)}`;
+  }).join("");
+  const nX = Math.min(6, pts.length), xt = [];
+  for (let i = 0; i < nX; i++) xt.push(pts[Math.round(i * (pts.length - 1) / Math.max(1, nX - 1))].day);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>
+      <text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11.5" fill="var(--text-muted)">${fmt(v)}</text>`).join("")}
+    ${[...new Set(xt)].map(d => `<text x="${x(d)}" y="${H - 8}" text-anchor="middle" font-size="11.5" fill="var(--text-muted)">${dayLabel(d)}</text>`).join("")}
+    ${ref ? `<path d="${path(ref)}" fill="none" stroke="var(--ref)" stroke-width="2" stroke-dasharray="5 4"/>` : ""}
+    <path d="${path(pts)}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>
+    <line id="xh" y1="${T}" y2="${H - B}" stroke="var(--text-muted)" stroke-width="1" visibility="hidden"/>
+    <circle id="dot" r="4.5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2" visibility="hidden"/>
+    <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" id="hit"/>`;
+  const hit = svg.querySelector("#hit"), xh = svg.querySelector("#xh"), dot = svg.querySelector("#dot");
+  const refMap = new Map((ref || []).map(p => [p.day, p.v]));
+  hit.onmousemove = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+    let best = pts[0]; for (const p of pts) if (Math.abs(x(p.day) - px) < Math.abs(x(best.day) - px)) best = p;
+    xh.setAttribute("x1", x(best.day)); xh.setAttribute("x2", x(best.day)); xh.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(best.day)); dot.setAttribute("cy", y(best.v)); dot.setAttribute("visibility", "visible");
+    const unit = state.mode === "gain" ? " /jour" : "";
+    tip.innerHTML = `<div>${toDate(best.day).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "long" })}</div>
+      <div>${METRICS[state.metric]} : <b>${fmt(best.v)}</b>${unit}</div>${refMap.has(best.day) ? `<div style="color:var(--text-muted)">Médiane catégorie : <b>${fmt(refMap.get(best.day))}</b>${unit}</div>` : ""}`;
+    tip.style.display = "block";
+    const bx = x(best.day) * r.width / W, flip = bx > r.width - 220;
+    tip.style.left = (flip ? bx - tip.offsetWidth - 12 : bx + 12) + "px";
+    tip.style.top = (y(best.v) * r.height / H - 20) + "px";
+  };
+  hit.onmouseleave = () => { tip.style.display = "none"; xh.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+}
+
+// ---------- classements ----------
+const RANKS = [
+  ["dl", "Téléchargements", "total"], ["likes", "Likes", "total"], ["views", "Vues", "total"],
+  ["dlpd", "Téléchargements / jour", "depuis la sortie (corrige l'âge du mod)"],
+  ["lpk", "Likes pour 1 000 vues", "qualité perçue"],
+  ["g7", "Dynamique (DL/jour, 7 j)", "ce qui se télécharge en ce moment"],
+];
+function drawRanks(m) {
+  const rows = catPeers(m).map(row);
+  const el = document.getElementById("ranks");
+  if (rows.length < 2) { el.innerHTML = `<div class="empty">Pas encore de mods concurrents relevés pour cette catégorie.</div>`; return; }
+  el.innerHTML = RANKS.map(([k, label, hint]) => {
+    const vals = rows.filter(r => r[k] != null);
+    const me = rows.find(r => r.id === m.mod_id);
+    if (!me || me[k] == null || vals.length < 2) return `<div class="rank-row"><div class="name">${label}<small>${hint}</small></div><div class="bar"></div><div class="r">—<small>${k === "g7" ? "dès 2 relevés" : "n/d"}</small></div></div>`;
+    const rank = 1 + vals.filter(r => r[k] > me[k]).length;
+    const ties = vals.filter(r => r[k] === me[k]).length - 1;
+    const pct = Math.round(100 * (vals.filter(r => r[k] < me[k]).length + ties / 2) / (vals.length - 1));
+    const med = median(vals.map(r => r[k]));
+    return `<div class="rank-row" title="Toi : ${fmt(me[k])} · médiane : ${fmt(med)}">
+      <div class="name">${label}<small>${hint}</small></div>
+      <div class="bar"><span style="width:${Math.max(2, pct)}%"></span><em></em></div>
+      <div class="r">${rank}ᵉ / ${vals.length}<small>mieux que ${pct} %</small></div></div>`;
+  }).join("") + `<div class="note">La barre indique la part des mods de la catégorie que tu dépasses ; le trait gris marque la médiane (50 %). Survole une ligne pour voir ta valeur face à la médiane.</div>`;
+}
+
+// ---------- tableau ----------
+const COLS = [["rank", "#"], ["name", "Mod"], ["dl", "DL"], ["likes", "Likes"], ["views", "Vues"], ["lpk", "Likes/1k vues"], ["dlpd", "DL/jour (vie)"], ["g7", "DL/jour (7 j)"]];
+function drawTable(m) {
+  const rows = catPeers(m).map(row);
+  const key = state.sort;
+  rows.sort((a, b) => key === "name" ? state.sortDir * a.m.name.localeCompare(b.m.name) : state.sortDir * ((a[key] ?? -1) - (b[key] ?? -1)));
+  const el = document.getElementById("table");
+  el.innerHTML = `<table><thead><tr>${COLS.map(([k, l]) => `<th data-k="${k}">${l}${state.sort === k ? (state.sortDir < 0 ? " ↓" : " ↑") : ""}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((r, i) => `<tr class="${r.m.is_mine ? "mine" : ""}"><td>${i + 1}</td><td><a href="${esc(safeUrl(r.m.url))}" target="_blank" rel="noopener">${esc(r.m.name)}</a></td>
+      <td>${fmt(r.dl)}</td><td>${fmt(r.likes)}</td><td>${fmt(r.views)}</td><td>${fmt(r.lpk)}</td><td>${fmt(r.dlpd)}</td><td>${fmt(r.g7)}</td></tr>`).join("")}</tbody></table>`;
+  el.querySelectorAll("th").forEach(th => th.onclick = () => {
+    const k = th.dataset.k; if (k === "rank") return;
+    state.sortDir = state.sort === k ? -state.sortDir : (k === "name" ? 1 : -1); state.sort = k; drawTable(m);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
