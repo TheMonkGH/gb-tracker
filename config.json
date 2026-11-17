@@ -1,0 +1,9 @@
+{
+  "member_id": 4254243,
+  "mod_ids": [],
+  "max_mods_per_category": 0,
+  "delay_seconds": 0.5,
+  "storage": "csv",
+  "data_dir": "data",
+  "dashboard_file": "site/index.html"
+}
