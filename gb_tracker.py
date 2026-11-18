@@ -7,6 +7,8 @@ Aucune dépendance : Python 3.8+ standard seulement.
 
 Commandes :
   python gb_tracker.py            -> relevé du jour + régénère dashboard.html
+  python gb_tracker.py secours    -> relevé de secours : ne fait rien si le relevé
+                                     du jour a déjà réussi, sinon fait le relevé
   python gb_tracker.py dashboard  -> régénère seulement dashboard.html
   python gb_tracker.py probe URL  -> affiche le JSON brut d'une URL de l'API (debug)
   python gb_tracker.py demo       -> crée demo.db avec 60 jours de fausses données
@@ -719,6 +721,13 @@ LOCK_PATH = os.path.join(HERE, "gb_tracker.lock")
 LOCK_STALE = 3 * 3600  # un verrou de plus de 3 h vient d'un relevé planté
 
 
+def already_done_today(db):
+    """Le relevé du jour a-t-il déjà réussi ? (complet, même s'il a été freiné)"""
+    row = db.execute("SELECT status FROM runs WHERE day = ? AND status IN ('ok', 'freiné') LIMIT 1",
+                     (date.today().isoformat(),)).fetchone()
+    return row is not None
+
+
 def acquire_lock():
     """Empêche deux relevés simultanés (tâche planifiée + lancement manuel)."""
     try:
@@ -757,13 +766,19 @@ def main():
         db.close()
         log(f"Export terminé : {n} fichier(s) CSV écrits dans {cfg['data_dir']}/")
         return
-    if cmd == "run":
+    if cmd in ("run", "secours"):
         if not acquire_lock():
             log("Un relevé est déjà en cours : celui-ci est annulé.")
             return
+        status = "ok"
         try:
-            log("=== Relevé du jour ===")
             db = open_store(cfg)
+            if cmd == "secours" and already_done_today(db):
+                log("=== Relevé de secours : le relevé du jour a déjà réussi, rien à faire ===")
+                build_dashboard(db, out)  # le tableau de bord reste publiable tel quel
+                db.close()
+                return
+            log("=== Relevé de secours ===" if cmd == "secours" else "=== Relevé du jour ===")
             status = snapshot(cfg, db)
             build_dashboard(db, out)
             db.close()

@@ -38,7 +38,7 @@ Dans le dépôt : **Settings → Pages → Build and deployment → Source : Git
 
 Onglet **Actions → Relevé GameBanana → Run workflow → Run workflow**. Au bout de 3 à 5 minutes, ton tableau de bord est en ligne.
 
-Ensuite, le relevé se lance tout seul chaque jour vers 12h17 (heure de Paris en hiver, 13h17 en été). GitHub peut le décaler un peu en cas de forte charge.
+Ensuite, le relevé se lance tout seul chaque jour vers 4h37 (heure de Paris en hiver, 5h37 en été). GitHub peut retarder, voire sauter, une tâche planifiée : un relevé de secours passe donc vers 16h37 (17h37 en été). Il ne fait rien si celui du matin a réussi, et prend le relais sinon.
 
 ### 6. Arrêter la version PC
 
@@ -49,7 +49,7 @@ Pour ne pas faire deux relevés par jour : ouvre le **Planificateur de tâches**
 - **Tableau de bord** : l'adresse ci-dessus, mise à jour après chaque relevé.
 - **Si un relevé échoue** (GameBanana bloque les serveurs de GitHub, panne...) : le relevé apparaît en rouge dans l'onglet Actions, un encadré rouge s'affiche sur le tableau de bord, et GitHub t'envoie en principe un e-mail. Ce qui a déjà été relevé est quand même enregistré et publié.
 - **Modifier un réglage** : ouvre `config.json` sur GitHub, clique sur le crayon, modifie, puis *Commit changes*. Le changement est pris en compte au relevé suivant.
-- **Changer l'heure** : dans `.github/workflows/releve.yml`, ligne `cron: "17 11 * * *"`. Le format est *minute heure*, en heure UTC.
+- **Changer l'heure** : dans `.github/workflows/releve.yml`, lignes `cron:`. Le format est *minute heure*, en heure UTC. Si tu changes l'heure du relevé de secours, change-la aussi à la ligne `if [ "$PLANIFICATION" = ...` du même fichier.
 
 ## Où sont les données
 
