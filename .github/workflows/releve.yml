@@ -2,7 +2,8 @@ name: Relevé GameBanana
 
 on:
   schedule:
-    - cron: "17 11 * * *"   # tous les jours à 11h17 UTC (12h17 en hiver, 13h17 en été à Paris)
+    - cron: "37 3 * * *"    # relevé principal : 3h37 UTC (4h37 en hiver, 5h37 en été à Paris)
+    - cron: "37 15 * * *"   # secours : 15h37 UTC (16h37 / 17h37) — ne fait rien si le matin a réussi
   workflow_dispatch:         # bouton « Run workflow » pour lancer un relevé à la main
 
 permissions:
@@ -31,7 +32,14 @@ jobs:
       - name: Relevé du jour
         id: releve
         continue-on-error: true   # même en cas d'échec, on enregistre et publie ce qui a été relevé
-        run: python gb_tracker.py
+        env:
+          PLANIFICATION: ${{ github.event.schedule }}
+        run: |
+          if [ "$PLANIFICATION" = "37 15 * * *" ]; then
+            python gb_tracker.py secours
+          else
+            python gb_tracker.py
+          fi
 
       - name: Enregistrer les données dans le dépôt
         run: |
