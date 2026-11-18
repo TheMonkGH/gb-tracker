@@ -134,6 +134,7 @@ function row(id) {
   const g = gain(id, "downloads", 7);
   return { id, m, s, dl: s.downloads, likes: s.likes, views: s.views,
     lpk: s.views ? s.likes / s.views * 1000 : null,
+    dpk: s.views ? s.downloads / s.views * 1000 : null,
     dlpd: age ? s.downloads / age : null,
     g7: g ? g.perDay : null };
 }
@@ -176,11 +177,13 @@ function render() {
     const g = gain(m.mod_id, k, 7);
     const gtxt = g ? `<span class="${g.value > 0 ? "up" : ""}">${sgn(g.value)}</span> sur ${Math.round(g.span)} j` : "évolution dès le 2ᵉ relevé";
     return `<div class="card tile"><div class="label">${METRICS[k]}</div><div class="val">${fmt(s[k])}</div>
-      <div class="meta">${gtxt}${age ? ` · ${fmt(s[k] / age)}/jour depuis la sortie` : ""}</div></div>`;
+      <div class="meta">${gtxt}${age ? ` · ${fmt(s[k] / age)}/jour depuis la sortie` : ""}${k === "views" && age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
   }).join("");
-  const lpk = s.views ? s.likes / s.views * 1000 : null;
-  const tileRatio = `<div class="card tile"><div class="label">Likes pour 1 000 vues</div><div class="val">${fmt(lpk)}</div>
-    <div class="meta">${m.cat_name ? "Catégorie " + esc(m.cat_name) : ""}${age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
+  const peersRows = catPeers(m).filter(id => !mods.get(id).is_mine).map(row);
+  const medTxt = k => { const md = median(peersRows.map(r => r[k])); return md == null ? "" : `médiane de la catégorie : ${fmt(md)}`; };
+  const me = row(m.mod_id);
+  const tileRatio = ["dpk", "lpk"].map(k => `<div class="card tile"><div class="label">${k === "dpk" ? "Téléchargements" : "Likes"} pour 1 000 vues</div><div class="val">${fmt(me[k])}</div>
+    <div class="meta">${medTxt(k)}</div></div>`).join("");
 
   main.innerHTML = `
     <div class="tiles">${tiles}${tileRatio}</div>
@@ -277,6 +280,7 @@ function drawChart(m) {
 const RANKS = [
   ["dl", "Téléchargements", "total"], ["likes", "Likes", "total"], ["views", "Vues", "total"],
   ["dlpd", "Téléchargements / jour", "depuis la sortie (corrige l'âge du mod)"],
+  ["dpk", "Téléchargements pour 1 000 vues", "les visiteurs qui passent à l'acte"],
   ["lpk", "Likes pour 1 000 vues", "qualité perçue"],
   ["g7", "Dynamique (DL/jour, 7 j)", "ce qui se télécharge en ce moment"],
 ];
@@ -300,7 +304,7 @@ function drawRanks(m) {
 }
 
 // ---------- tableau ----------
-const COLS = [["rank", "#"], ["name", "Mod"], ["dl", "DL"], ["likes", "Likes"], ["views", "Vues"], ["lpk", "Likes/1k vues"], ["dlpd", "DL/jour (vie)"], ["g7", "DL/jour (7 j)"]];
+const COLS = [["rank", "#"], ["name", "Mod"], ["dl", "DL"], ["likes", "Likes"], ["views", "Vues"], ["dpk", "DL/1k vues"], ["lpk", "Likes/1k vues"], ["dlpd", "DL/jour (vie)"], ["g7", "DL/jour (7 j)"]];
 function drawTable(m) {
   const rows = catPeers(m).map(row);
   const key = state.sort;
@@ -308,7 +312,7 @@ function drawTable(m) {
   const el = document.getElementById("table");
   el.innerHTML = `<table><thead><tr>${COLS.map(([k, l]) => `<th data-k="${k}">${l}${state.sort === k ? (state.sortDir < 0 ? " ↓" : " ↑") : ""}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((r, i) => `<tr class="${r.m.is_mine ? "mine" : ""}"><td>${i + 1}</td><td><a href="${esc(safeUrl(r.m.url))}" target="_blank" rel="noopener">${esc(r.m.name)}</a></td>
-      <td>${fmt(r.dl)}</td><td>${fmt(r.likes)}</td><td>${fmt(r.views)}</td><td>${fmt(r.lpk)}</td><td>${fmt(r.dlpd)}</td><td>${fmt(r.g7)}</td></tr>`).join("")}</tbody></table>`;
+      <td>${fmt(r.dl)}</td><td>${fmt(r.likes)}</td><td>${fmt(r.views)}</td><td>${fmt(r.dpk)}</td><td>${fmt(r.lpk)}</td><td>${fmt(r.dlpd)}</td><td>${fmt(r.g7)}</td></tr>`).join("")}</tbody></table>`;
   el.querySelectorAll("th").forEach(th => th.onclick = () => {
     const k = th.dataset.k; if (k === "rank") return;
     state.sortDir = state.sort === k ? -state.sortDir : (k === "name" ? 1 : -1); state.sort = k; drawTable(m);
