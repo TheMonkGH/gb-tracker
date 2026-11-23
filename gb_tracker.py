@@ -649,12 +649,17 @@ def export_data(db, generated=None):
         "SELECT cat_id, mod_id FROM category_members WHERE day = ?", (last,))]
     try:
         runs = [dict(r) for r in db.execute("SELECT * FROM runs ORDER BY started DESC LIMIT 30")]
+        # heure exacte du relevé dont viennent les chiffres de chaque jour (le dernier
+        # relevé du jour qui a lu au moins un mod) : sert à calculer de vrais gains
+        # par 24 h, même quand deux relevés ne sont pas espacés d'exactement un jour
+        day_times = {r[0]: r[1] for r in db.execute(
+            "SELECT day, MAX(started) FROM runs WHERE mods_ok > 0 GROUP BY day")}
     except sqlite3.OperationalError:
-        runs = []
+        runs, day_times = [], {}
     db.row_factory = None
     generated = generated or datetime.now().astimezone().isoformat(timespec="minutes")
     return {"generated": generated, "mods": mods,
-            "snapshots": snaps, "category_members": members, "runs": runs}
+            "snapshots": snaps, "category_members": members, "runs": runs, "day_times": day_times}
 
 
 def build_dashboard(db, out_path, generated=None):

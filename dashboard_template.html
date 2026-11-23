@@ -106,6 +106,13 @@ for (const [day, mod_id, downloads, likes, views] of DATA.snapshots) {
 const days = [...new Set(DATA.snapshots.map(s => s[0]))].sort();
 const lastDay = days[days.length - 1];
 const mine = DATA.mods.filter(m => m.is_mine).sort((a, b) => a.date_added - b.date_added);
+// heure exacte du relevé de chaque jour (absente pour les vieux relevés : on compte alors en jours entiers)
+const dayTimes = new Map(Object.entries(DATA.day_times || {}).map(([d, iso]) => [d, new Date(iso)]));
+function spanDays(d0, d1) { // temps réellement écoulé entre deux relevés, en jours (fractionnaires)
+  const t0 = dayTimes.get(d0), t1 = dayTimes.get(d1);
+  if (t0 && t1 && !isNaN(t0) && !isNaN(t1)) return (t1 - t0) / DAY;
+  return (toDate(d1) - toDate(d0)) / DAY;
+}
 
 function latest(id) { const a = series.get(id); return a ? a[a.length - 1] : null; }
 function valueAt(id, day, metric) { // valeur relevée ce jour-là (accès direct, pas de boucle)
@@ -118,11 +125,16 @@ function gain(id, metric, windowDays) { // gain sur la fenêtre (ou ce qui est d
   const t = toDate(end.day); t.setDate(t.getDate() - windowDays);
   const target = isoLocal(t); // date locale (toISOString passait en UTC : décalage d'un jour)
   let start = a[0]; for (const s of a) { if (s.day <= target) start = s; }
-  const span = (toDate(end.day) - toDate(start.day)) / DAY;
-  if (span < 1) return null;
+  if (start === end) return null;
+  const span = spanDays(start.day, end.day);
+  if (!(span > 0.25)) return null; // moins de 6 h d'écart : trop court pour un rythme fiable
   return { value: end[metric] - start[metric], span, perDay: (end[metric] - start[metric]) / span };
 }
-function ageDays(m) { return m.date_added ? Math.max(1, (toDate(lastDay) - m.date_added * 1000) / DAY) : null; }
+function ageDays(m) { // âge au moment du dernier relevé (heure exacte si connue)
+  if (!m.date_added) return null;
+  const ref = dayTimes.get(lastDay) || toDate(lastDay);
+  return Math.max(1, (ref - m.date_added * 1000) / DAY);
+}
 function catPeers(m) {
   let ids = DATA.category_members.filter(c => c[0] === m.cat_id).map(c => c[1]); // [cat_id, mod_id] du dernier relevé
   if (!ids.length) ids = DATA.mods.filter(x => x.cat_id === m.cat_id).map(x => x.mod_id);
@@ -212,14 +224,14 @@ function buildSeries(m) {
   if (state.mode === "total") return { mine: a.map(s => ({ day: s.day, v: s[k] })), ref: null };
   const pts = [];
   for (let i = 1; i < a.length; i++) {
-    const gap = (toDate(a[i].day) - toDate(a[i - 1].day)) / DAY;
-    pts.push({ day: a[i].day, v: (a[i][k] - a[i - 1][k]) / gap });
+    const gap = spanDays(a[i - 1].day, a[i].day); // vrai temps écoulé : gain ramené à 24 h
+    if (gap > 0) pts.push({ day: a[i].day, v: (a[i][k] - a[i - 1][k]) / gap });
   }
   const peers = catPeers(m).filter(id => !mods.get(id).is_mine); // médiane = les AUTRES moddeurs
   const ref = [];
   if (peers.length >= 3) for (let i = 0; i < pts.length; i++) {
-    const p = pts[i], prevDay = a[i].day; // pts[i] correspond à a[i+1]
-    const gap = (toDate(p.day) - toDate(prevDay)) / DAY;
+    const p = pts[i], j = a.findIndex(s => s.day === p.day), prevDay = a[j - 1].day;
+    const gap = spanDays(prevDay, p.day); // mêmes relevés, donc même durée que pour ton mod
     const vals = peers.map(id => { const v1 = valueAt(id, p.day, k), v0 = valueAt(id, prevDay, k); return v1 != null && v0 != null ? (v1 - v0) / gap : null; });
     // pas de médiane un jour où moins de la moitié des concurrents ont été relevés
     // (relevé interrompu, ou historique ancien non exporté) : elle serait trompeuse
