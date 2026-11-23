@@ -635,7 +635,7 @@ def _snapshot(cfg, api, db, w, counts):
 PEER_HISTORY_DAYS = 400  # historique des concurrents exporté (le tien : complet)
 
 
-def export_data(db):
+def export_data(db, generated=None):
     """Données pour le tableau de bord, en format compact (tableaux, pas
     d'objets) pour que le fichier HTML reste léger malgré les années."""
     db.row_factory = sqlite3.Row
@@ -652,12 +652,13 @@ def export_data(db):
     except sqlite3.OperationalError:
         runs = []
     db.row_factory = None
-    return {"generated": datetime.now().astimezone().isoformat(timespec="minutes"), "mods": mods,
+    generated = generated or datetime.now().astimezone().isoformat(timespec="minutes")
+    return {"generated": generated, "mods": mods,
             "snapshots": snaps, "category_members": members, "runs": runs}
 
 
-def build_dashboard(db, out_path):
-    data = export_data(db)
+def build_dashboard(db, out_path, generated=None):
+    data = export_data(db, generated)
     with open(os.path.join(HERE, "dashboard_template.html"), encoding="utf-8") as f:
         tpl = f.read()
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
@@ -722,10 +723,17 @@ LOCK_STALE = 3 * 3600  # un verrou de plus de 3 h vient d'un relevé planté
 
 
 def already_done_today(db):
-    """Le relevé du jour a-t-il déjà réussi ? (complet, même s'il a été freiné)"""
-    row = db.execute("SELECT status FROM runs WHERE day = ? AND status IN ('ok', 'freiné') LIMIT 1",
-                     (date.today().isoformat(),)).fetchone()
-    return row is not None
+    """Si le relevé du jour a déjà réussi (complet, même s'il a été freiné),
+    renvoie l'heure à laquelle il s'est terminé ; sinon None."""
+    row = db.execute("SELECT started, duration_s FROM runs WHERE day = ? AND status IN ('ok', 'freiné') "
+                     "ORDER BY started DESC LIMIT 1", (date.today().isoformat(),)).fetchone()
+    if row is None:
+        return None
+    try:
+        end = datetime.fromisoformat(row[0]) + timedelta(seconds=float(row[1] or 0))
+        return end.isoformat(timespec="minutes")
+    except (TypeError, ValueError):
+        return datetime.now().astimezone().isoformat(timespec="minutes")
 
 
 def acquire_lock():
@@ -773,9 +781,12 @@ def main():
         status = "ok"
         try:
             db = open_store(cfg)
-            if cmd == "secours" and already_done_today(db):
+            done_at = already_done_today(db) if cmd == "secours" else None
+            if done_at:
                 log("=== Relevé de secours : le relevé du jour a déjà réussi, rien à faire ===")
-                build_dashboard(db, out)  # le tableau de bord reste publiable tel quel
+                # tableau de bord republié à l'identique, avec l'heure du relevé du matin
+                # (et non celle du secours) pour ne pas laisser croire à un nouveau relevé
+                build_dashboard(db, out, generated=done_at)
                 db.close()
                 return
             log("=== Relevé de secours ===" if cmd == "secours" else "=== Relevé du jour ===")
