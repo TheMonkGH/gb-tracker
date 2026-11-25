@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 60
     environment:
       name: github-pages
-      url: ${{ steps.deploiement.outputs.page_url }}
+      url: ${{ steps.deploiement.outputs.page_url || steps.deploiement2.outputs.page_url || steps.deploiement3.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
 
@@ -58,8 +58,31 @@ jobs:
         with:
           path: site
 
+      # La publication échoue parfois pour une raison passagère côté GitHub
+      # (« No artifacts named github-pages were found... re-run later ») :
+      # on réessaie deux fois, après 1 puis 3 minutes, avant de déclarer l'échec.
       - name: Publier le tableau de bord
         id: deploiement
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Attendre 1 min avant de réessayer la publication
+        if: steps.deploiement.outcome == 'failure'
+        run: sleep 60
+
+      - name: Publier le tableau de bord (2e essai)
+        id: deploiement2
+        if: steps.deploiement.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Attendre 3 min avant le dernier essai
+        if: steps.deploiement.outcome == 'failure' && steps.deploiement2.outcome == 'failure'
+        run: sleep 180
+
+      - name: Publier le tableau de bord (3e et dernier essai)
+        id: deploiement3
+        if: steps.deploiement.outcome == 'failure' && steps.deploiement2.outcome == 'failure'
         uses: actions/deploy-pages@v5
 
       - name: Signaler un relevé raté
