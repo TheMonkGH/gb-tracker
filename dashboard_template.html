@@ -187,8 +187,12 @@ function render() {
   if (!state.mod) { main.innerHTML = `<div class="card empty">Aucun de tes mods n'a encore été relevé. Lance <code>python gb_tracker.py</code>.</div>`; return; }
   const m = mods.get(state.mod), s = latest(m.mod_id), age = ageDays(m);
   const tiles = ["downloads", "likes", "views"].map(k => {
+    // gain sur les 7 derniers jours (moins tant que l'historique est plus court)
+    const g = gain(m.mod_id, k, 7), n = g ? Math.max(1, Math.round(g.span)) : 0;
+    const gtxt = g ? `<span class="${g.value > 0 ? "up" : ""}">${sgn(g.value)}</span> sur ${n >= 7 ? "les 7 derniers jours" : n > 1 ? `les ${n} derniers jours` : "le dernier jour"}` : "";
+    const parts = [gtxt, age ? `${fmt(s[k] / age)}/jour depuis la sortie` : "", k === "views" && age ? `en ligne depuis ${Math.round(age)} j` : ""].filter(Boolean);
     return `<div class="card tile"><div class="label">${METRICS[k]}</div><div class="val">${fmt(s[k])}</div>
-      <div class="meta">${age ? `${fmt(s[k] / age)}/jour depuis la sortie` : ""}${k === "views" && age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
+      <div class="meta">${parts.join(" · ")}</div></div>`;
   }).join("");
   const peersRows = catPeers(m).filter(id => !mods.get(id).is_mine).map(row);
   const medTxt = k => { const md = median(peersRows.map(r => r[k])); return md == null ? "" : `médiane de la catégorie : ${fmt(md)}`; };
