@@ -164,7 +164,7 @@ document.getElementById("sub").textContent = days.length
   const el = document.getElementById("runwarn");
   const when = new Date(r.started).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   // les freinages ne sont mentionnés que s'il y en a eu (0 freinage = rien à signaler)
-  const line = `${r.mods_ok}/${r.mods_expected} mods relevés${r.throttled > 0 ? ` · ${r.throttled} freinage${r.throttled > 1 ? "s" : ""}` : ""} · ${Math.round(r.duration_s)} s`;
+  const line = `${r.mods_ok}/${r.mods_expected} mods relevés${r.throttled > 0 ? ` · ${r.throttled} freinage${r.throttled > 1 ? "s" : ""}` : ""}`;
   if (r.status === "ok") { document.getElementById("sub").textContent += ` · dernier relevé (${when}) : ${line}`; return; }
   const msg = { "freiné": "GameBanana a ralenti le script, qui a allongé sa pause tout seul (jusqu'à " + (+r.max_delay).toFixed(1) + " s). Le relevé est complet si les chiffres ci-dessous concordent.",
     "incomplet": "Certains mods n'ont pas pu être lus (supprimés, privés ou erreur réseau).",
@@ -187,10 +187,8 @@ function render() {
   if (!state.mod) { main.innerHTML = `<div class="card empty">Aucun de tes mods n'a encore été relevé. Lance <code>python gb_tracker.py</code>.</div>`; return; }
   const m = mods.get(state.mod), s = latest(m.mod_id), age = ageDays(m);
   const tiles = ["downloads", "likes", "views"].map(k => {
-    const g = gain(m.mod_id, k, 7);
-    const gtxt = g ? `<span class="${g.value > 0 ? "up" : ""}">${sgn(g.value)}</span> sur ${Math.round(g.span)} j` : "évolution dès le 2ᵉ relevé";
     return `<div class="card tile"><div class="label">${METRICS[k]}</div><div class="val">${fmt(s[k])}</div>
-      <div class="meta">${gtxt}${age ? ` · ${fmt(s[k] / age)}/jour depuis la sortie` : ""}${k === "views" && age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
+      <div class="meta">${age ? `${fmt(s[k] / age)}/jour depuis la sortie` : ""}${k === "views" && age ? ` · en ligne depuis ${Math.round(age)} j` : ""}</div></div>`;
   }).join("");
   const peersRows = catPeers(m).filter(id => !mods.get(id).is_mine).map(row);
   const medTxt = k => { const md = median(peersRows.map(r => r[k])); return md == null ? "" : `médiane de la catégorie : ${fmt(md)}`; };
